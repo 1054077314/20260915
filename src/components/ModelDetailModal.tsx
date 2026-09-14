@@ -174,7 +174,7 @@ export const ModelDetailModal: React.FC<ModelDetailModalProps> = ({
               <div>
                 {model.sourceEpisodeTitle ? (
                   <a
-                    href="https://space.bilibili.com/3546747185924773"
+                    href={model.bilibiliBvid ? `https://www.bilibili.com/video/${model.bilibiliBvid}` : "https://space.bilibili.com/3546747185924773"}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#00aeec]/10 text-[#00aeec] hover:bg-[#00aeec]/20 border border-[#00aeec]/30 text-xs font-mono-code transition-colors"

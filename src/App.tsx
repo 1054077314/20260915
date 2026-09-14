@@ -2,14 +2,13 @@ import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "motion/react";
 import { KILL_LINE_DATA, COST_DATA } from "./data/shishanData";
 import { KillLineRecord, StatusType } from "./types";
-import { CommentKeyword } from "./data/bilibiliCommentsData";
 import { Header } from "./components/Header";
 import { BentoStats } from "./components/BentoStats";
 import { KillLineTable } from "./components/KillLineTable";
 import { ScoreTrendChart } from "./components/ScoreTrendChart";
 import { CostVisualizer } from "./components/CostVisualizer";
 import { TierHierarchy } from "./components/TierHierarchy";
-import { BilibiliCommentsPanel } from "./components/BilibiliCommentsPanel";
+import { BilibiliEpisodesPanel } from "./components/BilibiliEpisodesPanel";
 import { Footer } from "./components/Footer";
 import { CustomCursor } from "./components/CustomCursor";
 import { ModelComparatorModal } from "./components/ModelComparatorModal";
@@ -26,7 +25,6 @@ export default function App() {
   const [cursorEnabled, setCursorEnabled] = useState(true);
   const [cursorMode, setCursorMode] = useState<"default" | "lens" | "button">("default");
   const [copied, setCopied] = useState(false);
-  const [activeKeyword, setActiveKeyword] = useState<CommentKeyword | null>(null);
 
   // Sync has-custom-cursor class to body
   useEffect(() => {
@@ -152,39 +150,8 @@ export default function App() {
     }
   };
 
-  const handleSelectKeyword = (kw: CommentKeyword | null) => {
-    setActiveKeyword(kw);
-    if (kw) {
-      const matched = KILL_LINE_DATA.find((m) => kw.relatedModelIds.includes(m.id));
-      if (matched) {
-        setSelectedModel(matched);
-      }
-      setTimeout(() => {
-        const el = document.getElementById("kill-line-matrix");
-        if (el) {
-          el.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-      }, 120);
-    }
-  };
-
   const filteredAndSortedData = useMemo(() => {
     return KILL_LINE_DATA.filter((item) => {
-      // Active word cloud keyword filtering
-      if (activeKeyword) {
-        const isRelated = activeKeyword.relatedModelIds.includes(item.id);
-        const q = activeKeyword.text.toLowerCase();
-        const textMatch =
-          item.model.toLowerCase().includes(q) ||
-          item.quote.toLowerCase().includes(q) ||
-          item.analysis.toLowerCase().includes(q) ||
-          item.strengths.some((s) => s.toLowerCase().includes(q)) ||
-          item.weaknesses.some((w) => w.toLowerCase().includes(q));
-        if (!isRelated && !textMatch) {
-          return false;
-        }
-      }
-
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
         const matchesModel = item.model.toLowerCase().includes(q);
@@ -221,7 +188,7 @@ export default function App() {
       }
       return b.score - a.score;
     });
-  }, [searchQuery, filterTier, sortBy, activeKeyword]);
+  }, [searchQuery, filterTier, sortBy]);
 
   return (
     <div className="min-h-screen bg-[#050505] text-[#ededed] font-sans antialiased selection:bg-rose-500/20 selection:text-rose-200">
@@ -284,8 +251,6 @@ export default function App() {
             onFilterTierChange={setFilterTier}
             sortBy={sortBy}
             onSortByChange={setSortBy}
-            activeKeyword={activeKeyword}
-            onClearKeyword={() => setActiveKeyword(null)}
             onMouseEnter={handleMouseEnterLens}
             onMouseLeave={handleMouseLeaveCursor}
           />
@@ -331,17 +296,21 @@ export default function App() {
           />
         </motion.div>
 
-        {/* Bilibili Community Hot Comments & Bullet Screen Insights */}
+        {/* Bilibili Official 12 Episodes Explorer */}
         <motion.div
           initial={{ opacity: 0, y: 14 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-40px" }}
           transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
         >
-          <BilibiliCommentsPanel
-            activeKeyword={activeKeyword}
-            onSelectKeyword={handleSelectKeyword}
-            onSelectModelFilter={(modelName) => setSearchQuery(modelName)}
+          <BilibiliEpisodesPanel
+            onSelectModelFilter={(modelName) => {
+              setSearchQuery(modelName);
+              const el = document.getElementById("kill-line-matrix");
+              if (el) {
+                el.scrollIntoView({ behavior: "smooth", block: "start" });
+              }
+            }}
             onMouseEnter={handleMouseEnterLens}
             onMouseLeave={handleMouseLeaveCursor}
           />
