@@ -1,24 +1,32 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "motion/react";
-import { KILL_LINE_DATA, COST_DATA } from "./data/shishanData";
-import { KillLineRecord, StatusType } from "./types";
+import { KillLineRecord } from "./types";
+import { ModelService } from "./services/modelService";
+
+// UI Components
 import { Header } from "./components/Header";
-import { BentoStats } from "./components/BentoStats";
-import { KillLineTable } from "./components/KillLineTable";
-import { ScoreTrendChart } from "./components/ScoreTrendChart";
-import { CostVisualizer } from "./components/CostVisualizer";
-import { TierHierarchy } from "./components/TierHierarchy";
-import { BilibiliEpisodesPanel } from "./components/BilibiliEpisodesPanel";
 import { Footer } from "./components/Footer";
 import { CustomCursor } from "./components/CustomCursor";
-import { ModelComparatorModal } from "./components/ModelComparatorModal";
-import { ModelDetailModal } from "./components/ModelDetailModal";
+import { TierHierarchy } from "./components/TierHierarchy";
+
+// Feature Components (Business logic modules)
+import {
+  BentoStats,
+  KillLineTable,
+  ModelDetailModal,
+  ModelComparatorModal,
+} from "./components/features/matrix";
+import { ScoreTrendChart } from "./components/features/trajectory";
+import { CostVisualizer } from "./components/features/cost";
+import { BilibiliEpisodesPanel } from "./components/features/episodes";
 
 export default function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterTier, setFilterTier] = useState("ALL");
   const [sortBy, setSortBy] = useState<"score" | "name" | "diamond" | "king">("score");
-  const [selectedModel, setSelectedModel] = useState<KillLineRecord>(KILL_LINE_DATA[0]);
+
+  const allModels = useMemo(() => ModelService.getAllModels(), []);
+  const [selectedModel, setSelectedModel] = useState<KillLineRecord>(allModels[0]);
   const [selectedForCompare, setSelectedForCompare] = useState<KillLineRecord[]>([]);
   const [isComparatorOpen, setIsComparatorOpen] = useState(false);
   const [detailModalModel, setDetailModalModel] = useState<KillLineRecord | null>(null);
@@ -56,11 +64,11 @@ export default function App() {
 
   const handleOpenComparator = () => {
     if (selectedForCompare.length === 0) {
-      const astra = KILL_LINE_DATA.find((m) => m.id === "gpt-6-astra") || KILL_LINE_DATA[0];
-      const flash = KILL_LINE_DATA.find((m) => m.id === "deepseek-v41-flash") || KILL_LINE_DATA[1];
+      const astra = ModelService.getModelById("gpt-6-astra") || allModels[0];
+      const flash = ModelService.getModelById("deepseek-v41-flash") || allModels[1];
       setSelectedForCompare([astra, flash]);
     } else if (selectedForCompare.length === 1) {
-      const candidate = KILL_LINE_DATA.find((m) => m.id !== selectedForCompare[0].id) || KILL_LINE_DATA[0];
+      const candidate = allModels.find((m) => m.id !== selectedForCompare[0].id) || allModels[0];
       setSelectedForCompare([selectedForCompare[0], candidate]);
     }
     setIsComparatorOpen(true);
@@ -81,62 +89,18 @@ export default function App() {
   };
 
   const handleExportData = (format: "json" | "csv") => {
-    if (format === "json") {
-      const dataStr = JSON.stringify(
-        {
-          title: "屎山论剑全 12 期 · 难度斩杀线 × 花费全量对照",
-          source: "B站: Token就是词元",
-          exportedAt: new Date().toISOString(),
-          killLines: KILL_LINE_DATA,
-          costSettlements: COST_DATA,
-        },
-        null,
-        2
-      );
-      const blob = new Blob([dataStr], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "shishan-benchmark-data.json";
-      a.click();
-      URL.revokeObjectURL(url);
-    } else {
-      const headers = [
-        "模型名称",
-        "天梯梯队",
-        "黄金线",
-        "钻石线",
-        "王者线",
-        "实测证言",
-      ];
-      const rows = KILL_LINE_DATA.map((d) => [
-        `"${d.model}"`,
-        `"${d.tier}"`,
-        `"${d.gold}"`,
-        `"${d.diamond}"`,
-        `"${d.king}"`,
-        `"${d.quote.replace(/"/g, '""')}"`,
-      ]);
-      const csvContent = "\uFEFF" + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "shishan-benchmark-data.csv";
-      a.click();
-      URL.revokeObjectURL(url);
-    }
+    ModelService.exportData(format);
   };
 
   const handleSelectHighlight = (type: "ASTRA" | "DS_FLASH" | "DIAMOND" | "KING") => {
     if (type === "ASTRA") {
-      const astra = KILL_LINE_DATA.find((m) => m.id === "gpt-6-astra");
+      const astra = ModelService.getModelById("gpt-6-astra");
       if (astra) {
         setSelectedModel(astra);
         setDetailModalModel(astra);
       }
     } else if (type === "DS_FLASH") {
-      const ds = KILL_LINE_DATA.find((m) => m.id === "deepseek-v41-flash");
+      const ds = ModelService.getModelById("deepseek-v41-flash");
       if (ds) {
         setSelectedModel(ds);
         setDetailModalModel(ds);
@@ -150,43 +114,12 @@ export default function App() {
     }
   };
 
+  // Delegated to ModelService
   const filteredAndSortedData = useMemo(() => {
-    return KILL_LINE_DATA.filter((item) => {
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
-        const matchesModel = item.model.toLowerCase().includes(q);
-        const matchesQuote = item.quote.toLowerCase().includes(q);
-        const matchesTier = item.tier.toLowerCase().includes(q);
-        if (!matchesModel && !matchesQuote && !matchesTier) {
-          return false;
-        }
-      }
-
-      if (filterTier === "TOP") {
-        return (
-          item.kingStatus === "pass" ||
-          item.kingStatus === "warn" ||
-          item.diamondStatus === "pass"
-        );
-      }
-      if (filterTier === "FLASH") {
-        return item.category === "Flash" || item.model.toLowerCase().includes("flash");
-      }
-
-      return true;
-    }).sort((a, b) => {
-      if (sortBy === "name") {
-        return a.model.localeCompare(b.model);
-      }
-      if (sortBy === "diamond") {
-        const weight: Record<StatusType, number> = { pass: 3, warn: 2, fail: 1, none: 0 };
-        return weight[b.diamondStatus] - weight[a.diamondStatus] || b.score - a.score;
-      }
-      if (sortBy === "king") {
-        const weight: Record<StatusType, number> = { pass: 3, warn: 2, fail: 1, none: 0 };
-        return weight[b.kingStatus] - weight[a.kingStatus] || b.score - a.score;
-      }
-      return b.score - a.score;
+    return ModelService.filterAndSortModels({
+      searchQuery,
+      filterTier,
+      sortBy,
     });
   }, [searchQuery, filterTier, sortBy]);
 
@@ -325,7 +258,7 @@ export default function App() {
         isOpen={isComparatorOpen}
         onClose={() => setIsComparatorOpen(false)}
         models={selectedForCompare}
-        allModels={KILL_LINE_DATA}
+        allModels={allModels}
         onSelectModelForSlot={handleSelectModelForSlot}
       />
 
