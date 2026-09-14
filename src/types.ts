@@ -21,6 +21,9 @@ export interface KillLineRecord {
   weaknesses: string[];
   bestFor: string;
   score: number; // 0 - 100 benchmark performance score
+  bilibiliAid?: string;
+  bilibiliBvid?: string;
+  sourceEpisodeTitle?: string;
 }
 
 export interface CostRecord {

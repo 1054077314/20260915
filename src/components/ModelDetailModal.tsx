@@ -11,6 +11,8 @@ import {
   Lightbulb,
   ShieldAlert,
   Award,
+  Tv,
+  ExternalLink,
 } from "lucide-react";
 
 interface ModelDetailModalProps {
@@ -168,22 +170,50 @@ export const ModelDetailModal: React.FC<ModelDetailModalProps> = ({
             </div>
 
             {/* Actions */}
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/[0.08]">
-              <button
-                onClick={() => {
-                  onAddToCompare(model);
-                  onClose();
-                }}
-                className="px-4 py-2 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.1] text-xs font-mono-code text-zinc-300 hover:text-white transition-colors"
-              >
-                加入对比矩阵
-              </button>
-              <button
-                onClick={onClose}
-                className="px-5 py-2 rounded-lg bg-white text-black font-semibold text-xs font-mono-code hover:bg-zinc-200 transition-colors shadow-sm"
-              >
-                关闭
-              </button>
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-white/[0.08]">
+              <div>
+                {model.sourceEpisodeTitle ? (
+                  <a
+                    href="https://space.bilibili.com/3546747185924773"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#00aeec]/10 text-[#00aeec] hover:bg-[#00aeec]/20 border border-[#00aeec]/30 text-xs font-mono-code transition-colors"
+                  >
+                    <Tv className="w-3.5 h-3.5" />
+                    <span>查看B站测评原片: {model.sourceEpisodeTitle}</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                ) : (
+                  <a
+                    href="https://space.bilibili.com/3546747185924773"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] text-zinc-400 hover:text-white border border-white/[0.08] text-xs font-mono-code transition-colors"
+                  >
+                    <Tv className="w-3.5 h-3.5" />
+                    <span>前往UP主B站主页</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => {
+                    onAddToCompare(model);
+                    onClose();
+                  }}
+                  className="px-4 py-2 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.1] text-xs font-mono-code text-zinc-300 hover:text-white transition-colors"
+                >
+                  加入对比矩阵
+                </button>
+                <button
+                  onClick={onClose}
+                  className="px-5 py-2 rounded-lg bg-white text-black font-semibold text-xs font-mono-code hover:bg-zinc-200 transition-colors shadow-sm"
+                >
+                  关闭
+                </button>
+              </div>
             </div>
           </motion.div>
         </div>

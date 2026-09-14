@@ -211,4 +211,32 @@ export const MODEL_HISTORIES: Record<string, ModelHistory> = {
       { episode: "E12", episodeNum: 12, label: "第12期", score: 44.0, note: "T4 恶劣工况折损" },
     ],
   },
+  "longcat-20": {
+    modelId: "longcat-20",
+    modelName: "美团龙猫 LongCat 2.0",
+    tier: "T3",
+    color: "#06b6d4", // cyan-500
+    history: [
+      { episode: "E07", episodeNum: 7, label: "第07期", score: 72.0, note: "美团专场登场，黄金一轮过" },
+      { episode: "E08", episodeNum: 8, label: "第08期", score: 73.0, note: "企业级代码表现稳定" },
+      { episode: "E09", episodeNum: 9, label: "第09期", score: 73.5, note: "钻石微卡但收敛" },
+      { episode: "E10", episodeNum: 10, label: "第10期", score: 74.0, note: "免费配额性价比极高" },
+      { episode: "E11", episodeNum: 11, label: "第11期", score: 74.0, note: "王者未过止步T3" },
+      { episode: "E12", episodeNum: 12, label: "第12期", score: 74.0, note: "T3 务实企业自研榜样" },
+    ],
+  },
+  "qwen-38-max": {
+    modelId: "qwen-38-max",
+    modelName: "Qwen 3.8 Max",
+    tier: "T2",
+    color: "#3b82f6", // blue-500
+    history: [
+      { episode: "E07", episodeNum: 7, label: "第07期", score: 82.0, note: "超大杯亮相，钻石一轮秒过" },
+      { episode: "E08", episodeNum: 8, label: "第08期", score: 83.5, note: "复杂状态机排查稳健" },
+      { episode: "E09", episodeNum: 9, label: "第09期", score: 84.5, note: "保持高胜率" },
+      { episode: "E10", episodeNum: 10, label: "第10期", score: 85.0, note: "展现旗舰攻坚力" },
+      { episode: "E11", episodeNum: 11, label: "第11期", score: 85.5, note: "王者三轮微偏未全收敛" },
+      { episode: "E12", episodeNum: 12, label: "第12期", score: 86.0, note: "T2 国产超大杯领军" },
+    ],
+  },
 };

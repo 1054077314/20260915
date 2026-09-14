@@ -1,5 +1,5 @@
 import React from "react";
-import { Share2, Check, Download, MousePointer, GitCompare, Search } from "lucide-react";
+import { Share2, Check, Download, MousePointer, GitCompare, Search, Tv, ExternalLink } from "lucide-react";
 import { KillLineRecord } from "../types";
 
 interface HeaderProps {
@@ -35,9 +35,17 @@ export const Header: React.FC<HeaderProps> = ({
             EPISODES 01–12
           </span>
           <span className="text-zinc-600">/</span>
-          <span className="text-zinc-400 text-[11px]">
-            UP: <strong className="text-zinc-200">Token就是词元</strong>
-          </span>
+          <a
+            href="https://space.bilibili.com/3546747185924773"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-[11px] text-zinc-300 hover:text-[#00aeec] transition-colors"
+            title="访问UP主 B站空间 (UID: 3546747185924773)"
+          >
+            <Tv className="w-3 h-3 text-[#00aeec]" />
+            <span>UP: <strong className="text-zinc-100 underline decoration-[#00aeec]/40 underline-offset-2">Token就是词元</strong></span>
+            <ExternalLink className="w-2.5 h-2.5 text-zinc-500" />
+          </a>
         </div>
 
         <div className="flex items-center gap-2">

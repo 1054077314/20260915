@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { KillLineRecord, StatusType } from "../types";
-import { ArrowUpDown, ChevronDown, ChevronUp, ExternalLink, HelpCircle, ChevronsUpDown, Loader2 } from "lucide-react";
+import { CommentKeyword } from "../data/bilibiliCommentsData";
+import { ArrowUpDown, ChevronDown, ChevronUp, ExternalLink, HelpCircle, ChevronsUpDown, Loader2, Tv, Sparkles, X } from "lucide-react";
 
 interface KillLineTableProps {
   data: KillLineRecord[];
@@ -14,6 +15,8 @@ interface KillLineTableProps {
   onFilterTierChange: (t: string) => void;
   sortBy: "score" | "name" | "diamond" | "king";
   onSortByChange: (s: "score" | "name" | "diamond" | "king") => void;
+  activeKeyword?: CommentKeyword | null;
+  onClearKeyword?: () => void;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
 }
@@ -27,6 +30,8 @@ export const KillLineTable: React.FC<KillLineTableProps> = ({
   onFilterTierChange,
   sortBy,
   onSortByChange,
+  activeKeyword,
+  onClearKeyword,
   onMouseEnter,
   onMouseLeave,
 }) => {
@@ -126,9 +131,9 @@ export const KillLineTable: React.FC<KillLineTableProps> = ({
   };
 
   return (
-    <section className="mb-20 sm:mb-28">
+    <section id="kill-line-matrix" className="mb-20 sm:mb-28 scroll-mt-24">
       {/* Section Header */}
-      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between border-b border-white/[0.08] pb-4 mb-6 gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between border-b border-white/[0.08] pb-4 mb-4 gap-3">
         <div>
           <h2 className="font-serif-title italic text-3xl sm:text-4xl text-white font-normal leading-tight">
             The Kill-Line Matrix
@@ -187,6 +192,33 @@ export const KillLineTable: React.FC<KillLineTableProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Active Keyword Cloud Filter Indicator */}
+      {activeKeyword && (
+        <div className="mb-4 p-3 rounded-xl bg-gradient-to-r from-[#00aeec]/15 via-[#00aeec]/5 to-transparent border border-[#00aeec]/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 shadow-[0_0_20px_rgba(0,174,236,0.1)]">
+          <div className="flex items-center gap-2 text-xs font-mono-code">
+            <span className="p-1 rounded-md bg-[#00aeec]/20 text-[#00aeec]">
+              <Sparkles className="w-3.5 h-3.5" />
+            </span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-zinc-400">词云联动过滤:</span>
+              <span className="px-2 py-0.5 rounded-full bg-[#00aeec]/20 border border-[#00aeec]/40 text-white font-bold">
+                {activeKeyword.text}
+              </span>
+              <span className="text-zinc-400 text-[11px]">
+                ({activeKeyword.categoryLabel} · 已高亮匹配 {data.length} 款模型)
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={onClearKeyword}
+            className="flex items-center gap-1 text-xs font-mono-code text-[#00aeec] hover:text-white px-2.5 py-1 rounded bg-[#00aeec]/20 hover:bg-[#00aeec]/30 transition-colors cursor-pointer shrink-0"
+          >
+            <X className="w-3.5 h-3.5" />
+            <span>清除词云筛选</span>
+          </button>
+        </div>
+      )}
 
       {/* Streamlined Table: Maximally Simplified Layout with Skeleton Loading */}
       <div className="border border-white/[0.08] rounded-xl overflow-hidden bg-white/[0.01] relative">
@@ -257,6 +289,12 @@ export const KillLineTable: React.FC<KillLineTableProps> = ({
               data.map((row) => {
                 const isExpanded = !!expandedIds[row.id];
                 const isSelected = selectedModel?.id === row.id;
+                const isKeywordHit = Boolean(
+                  activeKeyword &&
+                    (activeKeyword.relatedModelIds.includes(row.id) ||
+                      row.model.toLowerCase().includes(activeKeyword.text.toLowerCase()) ||
+                      row.quote.toLowerCase().includes(activeKeyword.text.toLowerCase()))
+                );
 
                 return (
                   <React.Fragment key={row.id}>
@@ -269,7 +307,9 @@ export const KillLineTable: React.FC<KillLineTableProps> = ({
                       onMouseEnter={onMouseEnter}
                       onMouseLeave={onMouseLeave}
                       className={`transition-colors cursor-pointer group select-none ${
-                        isExpanded
+                        isKeywordHit
+                          ? "bg-[#00aeec]/[0.08] hover:bg-[#00aeec]/[0.12] ring-1 ring-inset ring-[#00aeec]/40"
+                          : isExpanded
                           ? "bg-white/[0.035]"
                           : isSelected
                           ? "bg-white/[0.025]"
@@ -278,13 +318,19 @@ export const KillLineTable: React.FC<KillLineTableProps> = ({
                     >
                       {/* 1. Model Name */}
                       <td className="py-3.5 px-4 sm:px-6 align-middle">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm sm:text-[15px] font-medium text-white tracking-tight group-hover:text-rose-200 transition-colors">
                             {row.model}
                           </span>
                           <span className="text-[11px] font-mono-code text-zinc-500 hidden sm:inline">
                             ({row.timestamp})
                           </span>
+                          {isKeywordHit && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#00aeec]/20 border border-[#00aeec]/50 text-[#00aeec] text-[10px] font-mono-code font-bold tracking-tight animate-pulse">
+                              <Sparkles className="w-2.5 h-2.5" />
+                              <span>词云命中标的</span>
+                            </span>
+                          )}
                         </div>
                       </td>
 
@@ -381,11 +427,43 @@ export const KillLineTable: React.FC<KillLineTableProps> = ({
                                   </div>
                                 )}
 
+                                {/* Bilibili Comment Word Cloud Match Highlight */}
+                                {isKeywordHit && activeKeyword && (
+                                  <div className="p-3 rounded-lg bg-[#00aeec]/10 border border-[#00aeec]/30 flex items-start gap-2.5">
+                                    <Sparkles className="w-4 h-4 text-[#00aeec] shrink-0 mt-0.5" />
+                                    <div className="space-y-0.5 text-xs font-mono-code">
+                                      <div className="text-[#00aeec] font-bold flex items-center gap-2 flex-wrap">
+                                        <span>B站评论词云关联: 「{activeKeyword.text}」</span>
+                                        <span className="text-zinc-400 font-normal">
+                                          ({activeKeyword.categoryLabel} · {activeKeyword.episodeTag} · 热度 {activeKeyword.heat})
+                                        </span>
+                                      </div>
+                                      <p className="text-zinc-300 italic font-sans text-xs leading-relaxed pt-0.5">
+                                        “{activeKeyword.sampleQuote}”
+                                      </p>
+                                    </div>
+                                  </div>
+                                )}
+
                                 {/* Actions footer inside expansion */}
-                                <div className="pt-2 flex items-center justify-between text-xs font-mono-code">
-                                  <span className="text-zinc-500 text-[11px]">
-                                    战力指数: <strong className="text-white font-bold">{row.score}</strong> 分
-                                  </span>
+                                <div className="pt-2 flex flex-wrap items-center justify-between gap-2 text-xs font-mono-code">
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-zinc-500 text-[11px]">
+                                      战力指数: <strong className="text-white font-bold">{row.score}</strong> 分
+                                    </span>
+                                    {row.sourceEpisodeTitle && (
+                                      <a
+                                        href="https://space.bilibili.com/3546747185924773"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="inline-flex items-center gap-1 text-[11px] text-[#00aeec] hover:underline"
+                                      >
+                                        <Tv className="w-3 h-3" />
+                                        <span>B站来源: {row.sourceEpisodeTitle}</span>
+                                      </a>
+                                    )}
+                                  </div>
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
