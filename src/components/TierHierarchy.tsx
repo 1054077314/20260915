@@ -1,82 +1,584 @@
-import React from "react";
-import { TIER_DATA } from "../data/shishanData";
-import { AlertCircle, Layers } from "lucide-react";
+import React, { useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { Download, Eye, Crown, Target, Sparkles, TrendingUp } from "lucide-react";
 
 interface TierHierarchyProps {
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
 }
 
+interface TierPyramidItem {
+  tier: "T0" | "T1" | "T2" | "T3" | "T4";
+  badge: string;
+  badgeTag: string;
+  maxWidth: string;
+  colorName: string;
+  textAccent: string;
+  borderClass: string;
+  hoverBorderClass: string;
+  bgGradient: string;
+  hoverBg: string;
+  glowShadow: string;
+  avgScore: number;
+  scoreRange: string;
+  models: { name: string; score: number; highlightNote: string }[];
+  passSummary: string;
+  desc: string;
+}
+
+const PYRAMID_TIERS: TierPyramidItem[] = [
+  {
+    tier: "T0",
+    badge: "金字塔尖 · 唯一断层登顶",
+    badgeTag: "三关全一轮秒杀",
+    maxWidth: "max-w-lg",
+    colorName: "rose",
+    textAccent: "text-rose-400",
+    borderClass: "border-rose-500/60",
+    hoverBorderClass: "hover:border-rose-400",
+    bgGradient: "bg-gradient-to-b from-rose-950/40 via-rose-950/20 to-black",
+    hoverBg: "group-hover:from-rose-900/50 group-hover:to-rose-950/40",
+    glowShadow: "shadow-[0_0_35px_rgba(244,63,94,0.25)] hover:shadow-[0_0_50px_rgba(244,63,94,0.45)]",
+    avgScore: 99.5,
+    scoreRange: "98.0 ~ 100.0 分",
+    passSummary: "王者: 100% 一轮秒杀 · 钻石: 100% 一轮秒杀",
+    desc: "黄金 / 钻石 / 王者三轮均直接一轮秒杀。全场唯一全关卡断层第一，恶劣工况代码收敛无争议登顶。",
+    models: [
+      { name: "GPT-6 Astra", score: 99.5, highlightNote: "全场唯一钻石+王者全一轮秒杀" },
+    ],
+  },
+  {
+    tier: "T1",
+    badge: "突围旗舰 · 王者常客",
+    badgeTag: "王者线突破者",
+    maxWidth: "max-w-2xl",
+    colorName: "amber",
+    textAccent: "text-amber-400",
+    borderClass: "border-amber-500/40",
+    hoverBorderClass: "hover:border-amber-400",
+    bgGradient: "bg-gradient-to-b from-amber-500/[0.08] to-black/80",
+    hoverBg: "group-hover:from-amber-500/[0.15] group-hover:to-black/90",
+    glowShadow: "shadow-[0_4px_20px_rgba(245,158,11,0.08)] hover:shadow-[0_0_30px_rgba(245,158,11,0.25)]",
+    avgScore: 91.0,
+    scoreRange: "88.0 ~ 93.0 分",
+    passSummary: "王者: 曾2~3轮突破 (67%) · 钻石: 100% 稳过",
+    desc: "王者绝壁曾成功做对；钻石线发挥优异，高算力长思考模式能顶住代码幻觉与逻辑陷阱。",
+    models: [
+      { name: "Grok 4.6", score: 93.0, highlightNote: "王者曾两轮做对入选 T1" },
+      { name: "Claude Fable 5.1", score: 92.0, highlightNote: "钻石一轮秒、王者需三轮" },
+      { name: "DeepSeek V4 Pro", score: 88.0, highlightNote: "王者曾两轮解出，钻石偶有波动" },
+    ],
+  },
+  {
+    tier: "T2",
+    badge: "性价比之王 · 钻石杀手",
+    badgeTag: "一轮秒杀钻石",
+    maxWidth: "max-w-3xl",
+    colorName: "blue",
+    textAccent: "text-blue-400",
+    borderClass: "border-blue-500/35",
+    hoverBorderClass: "hover:border-blue-400",
+    bgGradient: "bg-gradient-to-b from-blue-500/[0.06] to-black/80",
+    hoverBg: "group-hover:from-blue-500/[0.12] group-hover:to-black/90",
+    glowShadow: "shadow-[0_4px_20px_rgba(96,165,250,0.06)] hover:shadow-[0_0_30px_rgba(96,165,250,0.22)]",
+    avgScore: 84.0,
+    scoreRange: "80.0 ~ 87.0 分",
+    passSummary: "钻石: 100% 一轮秒杀 (¥6.10) · 王者: 未突破",
+    desc: "狂烧 1.17 亿词元，以极低总价 (¥6.10) 一轮秒杀钻石难题，是四家 Flash 级中唯一冲过钻石分水岭的模型。",
+    models: [
+      { name: "DeepSeek V4.1 Flash", score: 84.0, highlightNote: "狂烧 1.17 亿 Token 仅 ¥6.10 秒杀钻石" },
+    ],
+  },
+  {
+    tier: "T3",
+    badge: "效率平替 · 钻石折戟",
+    badgeTag: "Token 极限省流 / 钻石卡死",
+    maxWidth: "max-w-4xl",
+    colorName: "emerald",
+    textAccent: "text-emerald-400",
+    borderClass: "border-emerald-500/25",
+    hoverBorderClass: "hover:border-emerald-400",
+    bgGradient: "bg-gradient-to-b from-emerald-500/[0.04] to-black/80",
+    hoverBg: "group-hover:from-emerald-500/[0.1] group-hover:to-black/90",
+    glowShadow: "hover:shadow-[0_0_30px_rgba(52,211,153,0.18)]",
+    avgScore: 68.0,
+    scoreRange: "65.0 ~ 72.0 分",
+    passSummary: "黄金: 100% 稳过 · 钻石: 卡死长考未破",
+    desc: "GLM 单期消耗仅 ~¥2，Token 效率极高；Qwen 开启深度长考。但两者最终均无法突破钻石分水岭，王者级全灭。",
+    models: [
+      { name: "GLM 5.3 Flash", score: 69.0, highlightNote: "极高能效 ~¥2/期，但钻石长时间卡住" },
+      { name: "Qwen 3.8 Flash", score: 67.0, highlightNote: "长考近2小时仍未能突破钻石难题" },
+    ],
+  },
+  {
+    tier: "T4",
+    badge: "工程基座 · 恶劣折损区",
+    badgeTag: "恶劣代码收敛困难",
+    maxWidth: "max-w-5xl",
+    colorName: "zinc",
+    textAccent: "text-zinc-500",
+    borderClass: "border-white/[0.08]",
+    hoverBorderClass: "hover:border-zinc-500",
+    bgGradient: "bg-white/[0.015]",
+    hoverBg: "group-hover:bg-white/[0.04]",
+    glowShadow: "hover:shadow-[0_0_20px_rgba(255,255,255,0.08)]",
+    avgScore: 45.0,
+    scoreRange: "40.0 ~ 50.0 分",
+    passSummary: "黄金: 勉强收敛 · 钻石与王者: 跨12期从未做对",
+    desc: "在恶劣工程代码工况下收敛困难，跨 12 期钻石与王者难题从未做对（注：仅指代代码 Debug 场景，不代表通用问答水平）。",
+    models: [
+      { name: "Gemini 3.8", score: 46.0, highlightNote: "黄金全对，钻石以上 12 期从未做对" },
+      { name: "Opus 4.8", score: 44.0, highlightNote: "恶劣工况下逻辑高频震荡翻车" },
+    ],
+  },
+];
+
 export const TierHierarchy: React.FC<TierHierarchyProps> = ({
   onMouseEnter,
   onMouseLeave,
 }) => {
+  const [hoveredTier, setHoveredTier] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  // Generate high-resolution Pyramid Infographic Poster on HTML5 Canvas
+  const generatePosterImage = (): string => {
+    const canvas = document.createElement("canvas");
+    const dpr = 2; // 2x Retina quality
+    const width = 1200;
+    const height = 1100;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return "";
+
+    ctx.scale(dpr, dpr);
+
+    // Background
+    ctx.fillStyle = "#050508";
+    ctx.fillRect(0, 0, width, height);
+
+    // Grid lines
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.025)";
+    ctx.lineWidth = 1;
+    for (let x = 0; x < width; x += 40) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, height);
+      ctx.stroke();
+    }
+    for (let y = 0; y < height; y += 40) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(width, y);
+      ctx.stroke();
+    }
+
+    // Header Badge
+    ctx.fillStyle = "rgba(244, 63, 94, 0.12)";
+    ctx.strokeStyle = "rgba(244, 63, 94, 0.4)";
+    ctx.beginPath();
+    ctx.roundRect(width / 2 - 130, 40, 260, 28, 14);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = "#fb7185";
+    ctx.font = "600 11px 'JetBrains Mono', monospace";
+    ctx.textAlign = "center";
+    ctx.fillText("▲ 屎山论剑全 12 期 · 战力金字塔", width / 2, 58);
+
+    // Main Title
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "italic 700 42px 'Playfair Display', serif";
+    ctx.fillText("The Battle Pyramid", width / 2, 115);
+
+    ctx.fillStyle = "#71717a";
+    ctx.font = "400 14px 'JetBrains Mono', sans-serif";
+    ctx.fillText("20+ 款模型极限斩杀线与实测定位 · 6,075 条弹幕交叉验证", width / 2, 144);
+
+    // Draw Pyramid Levels
+    let startY = 185;
+    const gap = 16;
+    const levelWidths: Record<string, number> = {
+      T0: 480,
+      T1: 650,
+      T2: 800,
+      T3: 940,
+      T4: 1060,
+    };
+
+    PYRAMID_TIERS.forEach((item) => {
+      const w = levelWidths[item.tier];
+      const h = 110;
+      const left = (width - w) / 2;
+
+      // Glow effect for T0
+      if (item.tier === "T0") {
+        ctx.shadowColor = "rgba(244, 63, 94, 0.45)";
+        ctx.shadowBlur = 25;
+      } else {
+        ctx.shadowBlur = 0;
+      }
+
+      // Box
+      ctx.fillStyle = item.tier === "T0" ? "rgba(244, 63, 94, 0.14)" : "rgba(255, 255, 255, 0.03)";
+      ctx.strokeStyle = item.tier === "T0" ? "#f43f5e" : "rgba(255, 255, 255, 0.15)";
+      ctx.lineWidth = item.tier === "T0" ? 2 : 1;
+      ctx.beginPath();
+      ctx.roundRect(left, startY, w, h, 12);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.shadowBlur = 0;
+
+      // Content inside Level
+      ctx.textAlign = "left";
+
+      // Tier title
+      ctx.fillStyle = item.tier === "T0" ? "#fb7185" : item.tier === "T1" ? "#fbbf24" : item.tier === "T2" ? "#60a5fa" : item.tier === "T3" ? "#34d399" : "#a1a1aa";
+      ctx.font = "italic 700 36px 'Playfair Display', serif";
+      ctx.fillText(item.tier, left + 24, startY + 50);
+
+      // Badge
+      ctx.font = "600 11px 'JetBrains Mono', monospace";
+      ctx.fillText(item.badge, left + 92, startY + 36);
+
+      // Score
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "700 14px 'JetBrains Mono', monospace";
+      ctx.textAlign = "right";
+      ctx.fillText(`均分 ${item.avgScore} (${item.scoreRange})`, left + w - 24, startY + 36);
+
+      // Models
+      ctx.textAlign = "left";
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "600 17px 'Inter', sans-serif";
+      const modelNames = item.models.map((m) => m.name).join(" · ");
+      ctx.fillText(modelNames, left + 92, startY + 65);
+
+      // Desc
+      ctx.fillStyle = "#a1a1aa";
+      ctx.font = "300 12px 'Inter', sans-serif";
+      ctx.fillText(item.desc, left + 92, startY + 92);
+
+      startY += h + gap;
+    });
+
+    // Footer
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#52525b";
+    ctx.font = "400 11px 'JetBrains Mono', monospace";
+    ctx.fillText(
+      "CONFIDENTIAL BENCHMARK AUDIT · BILIBILI @TOKEN就是词元 ｜ ZERO HALLUCINATION",
+      width / 2,
+      height - 35
+    );
+
+    return canvas.toDataURL("image/png");
+  };
+
+  const handleDownloadPoster = () => {
+    setIsExporting(true);
+    try {
+      const dataUrl = generatePosterImage();
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = "shishan-pyramid-hierarchy.png";
+      a.click();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handlePreviewPoster = () => {
+    const dataUrl = generatePosterImage();
+    setPreviewImage(dataUrl);
+  };
+
   return (
-    <section className="mb-24 sm:mb-32">
-      {/* Header */}
-      <div className="border-b border-white/[0.08] pb-6 mb-8">
-        <h2 className="font-serif-title italic text-3xl sm:text-5xl text-white font-normal">
-          The Verified Hierarchy · 实战天梯
-        </h2>
-        <p className="text-xs text-zinc-400 font-mono-code mt-1.5">
-          经全 12 期弹幕与视频元数据严谨订正后的工程实战梯队
-        </p>
-      </div>
-
-      {/* Ladder list */}
-      <div className="bg-white/[0.02] border border-white/[0.08] rounded-xl divide-y divide-white/[0.06] overflow-hidden">
-        {TIER_DATA.map((tier) => (
-          <div
-            key={tier.tier}
-            onMouseEnter={onMouseEnter}
-            onMouseLeave={onMouseLeave}
-            className="p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-5 hover:bg-white/[0.02] transition-colors"
-          >
-            <div className="flex items-start sm:items-center gap-5 sm:gap-7">
-              <span
-                className={`font-serif-title text-4xl sm:text-5xl shrink-0 w-12 sm:w-16 ${
-                  tier.tier === "T0"
-                    ? "text-rose-400"
-                    : tier.tier === "T1"
-                    ? "text-amber-400"
-                    : tier.tier === "T2"
-                    ? "text-blue-400"
-                    : tier.tier === "T3"
-                    ? "text-emerald-400"
-                    : "text-zinc-500"
-                }`}
-              >
-                {tier.tier}
-              </span>
-              <div>
-                <div className="text-lg sm:text-xl font-medium text-white mb-1 tracking-tight">
-                  {tier.models}
-                </div>
-                <div className="text-xs sm:text-sm text-zinc-400 font-light leading-relaxed">
-                  {tier.desc}
-                </div>
-              </div>
-            </div>
-
-            <div className="md:text-right shrink-0">
-              <span
-                className={`inline-block text-[11px] font-mono-code px-2.5 py-1 rounded border ${tier.badgeColor}`}
-              >
-                {tier.summary}
-              </span>
-            </div>
+    <section className="mb-20 sm:mb-28">
+      {/* Section Header */}
+      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between border-b border-white/[0.08] pb-4 mb-8 gap-3">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="inline-flex items-center gap-1 font-mono-code text-[11px] px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20">
+              <Crown className="w-3 h-3" />
+              <span>THE PYRAMID · 实战金字塔</span>
+            </span>
           </div>
-        ))}
-      </div>
+          <h2 className="font-serif-title italic text-3xl sm:text-4xl text-white font-normal leading-tight">
+            The Battle Pyramid
+          </h2>
+          <span className="font-mono-code text-[11px] text-zinc-500 tracking-wider uppercase block mt-1">
+            鼠标悬停探查各梯队战力均分区间 · 点击可导出高清金字塔长图
+          </span>
+        </div>
 
-      {/* Scenario notice */}
-      <div className="mt-6 p-4 rounded-lg bg-white/[0.02] border border-white/[0.06] flex items-start gap-3">
-        <AlertCircle className="w-4 h-4 text-zinc-500 shrink-0 mt-0.5" />
-        <div className="font-mono-code text-xs text-zinc-400 leading-relaxed">
-          <strong className="text-zinc-200">场景限定声明：</strong>
-          GLM 5.3 完整版与 Kimi K3 归入 T4，仅代表其在「屎山论剑恶劣工况与长程代码排错」特定极端测试场景下的实战收敛表现，不代表模型在通用多模态或学术文科任务上的综合排名。
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2 font-mono-code text-xs">
+          <button
+            onClick={handlePreviewPoster}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.1] text-zinc-300 hover:text-white transition-colors"
+            title="在线预览高清战力海报"
+          >
+            <Eye className="w-3.5 h-3.5 text-zinc-400" />
+            <span>预览海报</span>
+          </button>
+
+          <button
+            onClick={handleDownloadPoster}
+            disabled={isExporting}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/50 text-rose-300 hover:text-rose-100 transition-colors font-medium shadow-[0_0_20px_rgba(244,63,94,0.2)]"
+            title="一键导出高清金字塔长图"
+          >
+            <Download className="w-3.5 h-3.5 text-rose-400" />
+            <span>{isExporting ? "出图中..." : "导出金字塔图"}</span>
+          </button>
         </div>
       </div>
+
+      {/* Visual Pyramid Container */}
+      <div className="relative py-6 px-2 sm:px-4 flex flex-col items-center gap-3.5 select-none">
+        {/* Pyramid Apex Light Ray Beam */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-32 bg-rose-500/10 blur-3xl pointer-events-none" />
+
+        {PYRAMID_TIERS.map((tierItem, index) => {
+          const isT0 = tierItem.tier === "T0";
+          const isHovered = hoveredTier === tierItem.tier;
+          const isOtherHovered = hoveredTier !== null && !isHovered;
+
+          return (
+            <React.Fragment key={tierItem.tier}>
+              {/* Level Card with Hover Interactions */}
+              <div
+                onMouseEnter={() => {
+                  setHoveredTier(tierItem.tier);
+                  if (onMouseEnter) onMouseEnter();
+                }}
+                onMouseLeave={() => {
+                  setHoveredTier(null);
+                  if (onMouseLeave) onMouseLeave();
+                }}
+                className={`w-full ${tierItem.maxWidth} relative group transition-all duration-300 ${
+                  isHovered
+                    ? "scale-[1.025] z-30"
+                    : isOtherHovered
+                    ? "opacity-60 scale-[0.99] z-10"
+                    : "z-10"
+                }`}
+              >
+                {/* Apex Crown Indicator for T0 */}
+                {isT0 && (
+                  <div className="flex justify-center -mb-2.5 relative z-20">
+                    <span className="inline-flex items-center gap-1 px-3 py-0.5 rounded-full bg-rose-500 text-white font-mono-code text-[10px] font-semibold tracking-wider uppercase shadow-[0_0_15px_rgba(244,63,94,0.6)] animate-pulse">
+                      <Crown className="w-3 h-3 text-white" />
+                      <span>金字塔尖 · 唯一断层登顶</span>
+                    </span>
+                  </div>
+                )}
+
+                {/* Main Tier Block */}
+                <div
+                  className={`p-4 sm:p-5 rounded-2xl border transition-all duration-300 relative backdrop-blur-sm ${
+                    tierItem.bgGradient
+                  } ${tierItem.borderClass} ${tierItem.hoverBorderClass} ${tierItem.glowShadow} ${
+                    isHovered ? "ring-1 ring-white/20" : ""
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    {/* Tier Pillar & Content */}
+                    <div className="flex items-start gap-3.5 sm:gap-4 flex-1">
+                      <span
+                        className={`font-serif-title italic text-4xl sm:text-5xl font-bold leading-none shrink-0 ${
+                          tierItem.textAccent
+                        } ${isHovered ? "drop-shadow-[0_0_12px_currentColor]" : ""}`}
+                      >
+                        {tierItem.tier}
+                      </span>
+
+                      <div className="flex-1">
+                        {/* Tier Title & Highlight Badge */}
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <span className="font-mono-code text-[11px] text-zinc-400">
+                            {tierItem.badge}
+                          </span>
+                          <span
+                            className={`font-mono-code text-[10px] px-1.5 py-0.5 rounded border transition-colors ${
+                              isHovered
+                                ? "bg-white text-black font-semibold border-white"
+                                : "bg-white/[0.04] text-zinc-400 border-white/[0.08]"
+                            }`}
+                          >
+                            {tierItem.badgeTag}
+                          </span>
+                        </div>
+
+                        {/* Model Names: HIGH-CONTRAST HIGHLIGHT on Hover */}
+                        <div className="flex items-center gap-2 flex-wrap my-1.5">
+                          {tierItem.models.map((model) => (
+                            <span
+                              key={model.name}
+                              className={`text-base sm:text-lg font-semibold tracking-tight transition-all duration-200 px-2 py-0.5 rounded ${
+                                isHovered
+                                  ? "bg-white/[0.12] text-white shadow-[0_0_10px_rgba(255,255,255,0.2)] font-bold scale-[1.03]"
+                                  : "text-zinc-100"
+                              }`}
+                            >
+                              {model.name}
+                            </span>
+                          ))}
+                        </div>
+
+                        {/* Description */}
+                        <p className="text-xs text-zinc-300 font-light mt-1.5 leading-relaxed">
+                          {tierItem.desc}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Right: Score Column */}
+                    <div className="text-right font-mono-code shrink-0">
+                      <div className="text-[10px] text-zinc-500 uppercase">综合战力均分</div>
+                      <div
+                        className={`text-2xl sm:text-3xl font-bold transition-transform duration-200 ${
+                          tierItem.textAccent
+                        } ${isHovered ? "scale-110 drop-shadow-[0_0_10px_currentColor]" : ""}`}
+                      >
+                        {tierItem.avgScore}
+                      </div>
+                      <div className="text-[10px] text-zinc-400 mt-0.5 font-sans">
+                        {tierItem.scoreRange}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ---------------- FLOATING TRANSLUCENT POPOVER CARD ON HOVER ---------------- */}
+                {isHovered && (
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 w-[92%] sm:w-auto sm:min-w-[360px] max-w-lg p-3.5 rounded-xl bg-[#101016]/95 backdrop-blur-xl border border-white/20 shadow-[0_12px_40px_rgba(0,0,0,0.8)] animate-fadeIn font-mono-code text-xs">
+                    {/* Popover Header */}
+                    <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/[0.08]">
+                      <div className="flex items-center gap-1.5 font-medium text-white">
+                        <Target className="w-3.5 h-3.5 text-rose-400" />
+                        <span>{tierItem.tier} 梯队实战区间档案</span>
+                      </div>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-zinc-300">
+                        战力区间: {tierItem.scoreRange}
+                      </span>
+                    </div>
+
+                    {/* Pass Breakdown & Models detail */}
+                    <div className="space-y-1.5 text-zinc-300 text-[11px]">
+                      <div className="flex justify-between items-center text-zinc-400">
+                        <span>通关胜率画像：</span>
+                        <span className="text-zinc-200 font-medium">{tierItem.passSummary}</span>
+                      </div>
+
+                      <div className="pt-1.5 border-t border-white/[0.06] text-[11px] text-zinc-400">
+                        <div className="text-[10px] text-zinc-500 mb-1 uppercase">
+                          已高亮入围模型细分：
+                        </div>
+                        <div className="space-y-1">
+                          {tierItem.models.map((m) => (
+                            <div key={m.name} className="flex justify-between items-center">
+                              <span className="text-white font-medium">• {m.name}</span>
+                              <span className="text-zinc-400 text-[10px]">{m.highlightNote}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Downward Connecting Notch */}
+              {index < PYRAMID_TIERS.length - 1 && (
+                <div
+                  className={`text-zinc-600 font-mono text-xs transition-opacity duration-200 ${
+                    hoveredTier ? "opacity-30" : "opacity-60"
+                  }`}
+                >
+                  ▼
+                </div>
+              )}
+            </React.Fragment>
+          );
+        })}
+      </div>
+
+      {/* Footnote */}
+      <div className="mt-6 p-3 rounded-lg bg-white/[0.01] border border-white/[0.05] text-[11px] font-mono-code text-zinc-500 flex items-center justify-between flex-wrap gap-2">
+        <span>▲ 鼠标悬停可即时查看各梯队的分数区间与通关画像；阶梯宽度依模型淘汰漏斗成形。</span>
+        <button
+          onClick={handleDownloadPoster}
+          className="text-rose-400 hover:text-rose-300 transition-colors inline-flex items-center gap-1"
+        >
+          <Download className="w-3 h-3" />
+          <span>导出金字塔高清图</span>
+        </button>
+      </div>
+
+      {/* High-Resolution Poster Modal */}
+      <AnimatePresence>
+        {previewImage && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+              className="fixed inset-0 bg-black/85 backdrop-blur-md"
+              onClick={() => setPreviewImage(null)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 12 }}
+              transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+              className="relative bg-[#0b0b0f] border border-white/15 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-5 sm:p-6 shadow-[0_25px_70px_rgba(0,0,0,0.85)] flex flex-col z-10 my-8"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-4 font-mono-code text-xs">
+                <span className="text-white font-medium flex items-center gap-1.5">
+                  <Crown className="w-3.5 h-3.5 text-rose-400" />
+                  <span>屎山论剑实战金字塔 · 高清图预览</span>
+                </span>
+                <div className="flex items-center gap-3">
+                  <a
+                    href={previewImage}
+                    download="shishan-pyramid-hierarchy.png"
+                    className="inline-flex items-center gap-1 px-3 py-1 rounded bg-rose-500 text-white font-medium text-xs hover:bg-rose-600 transition-colors"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>下载原图</span>
+                  </a>
+                  <button
+                    onClick={() => setPreviewImage(null)}
+                    className="text-zinc-400 hover:text-white text-base font-mono-code p-1"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+
+              <div className="rounded-xl overflow-hidden border border-white/10 shadow-2xl bg-[#050508]">
+                <img
+                  src={previewImage}
+                  alt="战力金字塔高清图"
+                  className="w-full h-auto object-contain"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+              <div className="mt-3 text-center text-zinc-500 font-mono-code text-[11px]">
+                右键图片可直接复制或保存为高清 PNG 随时分享
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </section>
   );
 };

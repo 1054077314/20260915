@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { COST_DATA } from "../data/shishanData";
-import { CostRecord } from "../types";
-import { BarChart3, Coins, Flame, Info, Sparkles, TrendingUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Sparkles, TrendingUp, AlertTriangle } from "lucide-react";
 
 interface CostVisualizerProps {
   onMouseEnter?: () => void;
@@ -12,163 +11,167 @@ export const CostVisualizer: React.FC<CostVisualizerProps> = ({
   onMouseEnter,
   onMouseLeave,
 }) => {
-  const [selectedCostMetric, setSelectedCostMetric] = useState<"cost" | "tokens">("cost");
+  const [showAll, setShowAll] = useState(false);
 
-  // Max value for normalized progress bar
-  const maxCost = Math.max(...COST_DATA.map((d) => d.estimatedCostYuan));
-  const maxTokens = Math.max(...COST_DATA.map((d) => d.tokenMillions));
+  // Top 3 primary official settlement benchmarks (Episode 09-12 canonical audit)
+  const primaryCosts = COST_DATA.slice(0, 3);
+  // Additional historical & reference benchmarks
+  const secondaryCosts = COST_DATA.slice(3);
 
   return (
-    <section className="mb-24 sm:mb-32">
+    <section className="mb-20 sm:mb-28">
       {/* Section Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between border-b border-white/[0.08] pb-6 mb-8 gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between border-b border-white/[0.08] pb-4 mb-6 gap-2">
         <div>
-          <h2 className="font-serif-title italic text-3xl sm:text-5xl text-white font-normal">
-            Cost & Token Economics
+          <h2 className="font-serif-title italic text-3xl sm:text-4xl text-white font-normal leading-tight">
+            The Cost of Truth
           </h2>
-          <p className="text-xs text-zinc-400 font-mono-code mt-1.5">
-            官方结算与实测成本账单对照 · 谁在狂烧词元？谁在极端控费？
-          </p>
-        </div>
-
-        {/* Metric toggle */}
-        <div className="flex items-center gap-1.5 p-1 bg-white/[0.03] border border-white/[0.08] rounded-lg self-start sm:self-auto font-mono-code text-xs">
-          <button
-            onClick={() => setSelectedCostMetric("cost")}
-            className={`px-3 py-1.5 rounded-md transition-colors ${
-              selectedCostMetric === "cost"
-                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                : "text-zinc-400 hover:text-white"
-            }`}
-          >
-            以单期实付折算 (¥)
-          </button>
-          <button
-            onClick={() => setSelectedCostMetric("tokens")}
-            className={`px-3 py-1.5 rounded-md transition-colors ${
-              selectedCostMetric === "tokens"
-                ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-                : "text-zinc-400 hover:text-white"
-            }`}
-          >
-            以词元吞吐 (千万 Token)
-          </button>
-        </div>
-      </div>
-
-      {/* Comparative Visual Bars */}
-      <div className="mb-10 p-6 rounded-xl bg-white/[0.02] border border-white/[0.08]">
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-2 text-xs font-mono-code text-zinc-300">
-            <BarChart3 className="w-4 h-4 text-emerald-400" />
-            <span>实战成本与词元能效横向梯度条</span>
-          </div>
-          <span className="text-[11px] font-mono-code text-zinc-500">
-            基准：第 09-12 期屎山高压测试
+          <span className="font-mono-code text-[11px] text-zinc-500 tracking-wider uppercase block mt-1">
+            确切 Token 账单与官方花费结算 · 真实能效对照
           </span>
         </div>
 
-        <div className="space-y-4">
-          {COST_DATA.map((item) => {
-            const barPercentage =
-              selectedCostMetric === "cost"
-                ? Math.min(100, (item.estimatedCostYuan / maxCost) * 100)
-                : Math.min(100, (item.tokenMillions / maxTokens) * 100);
+        {/* Toggle more records */}
+        <button
+          onClick={() => setShowAll((prev) => !prev)}
+          className="inline-flex items-center gap-1.5 font-mono-code text-xs text-zinc-400 hover:text-white transition-colors self-start sm:self-auto py-1 px-2.5 rounded bg-white/[0.03] border border-white/[0.08]"
+        >
+          <span>{showAll ? "收起扩展明细" : "展开更多实战账单"}</span>
+          {showAll ? (
+            <ChevronUp className="w-3 h-3 text-zinc-500" />
+          ) : (
+            <ChevronDown className="w-3 h-3 text-zinc-500" />
+          )}
+        </button>
+      </div>
 
-            const isValueKing = item.badge === "VALUE NO.1";
+      {/* Main Canonical 3-Card Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
+        {primaryCosts.map((item, idx) => {
+          const isValueKing = item.id === "ds-v41-flash";
+          const isExpensive = item.id === "gemini-38" || item.badge === "EXPENSIVE";
 
-            return (
-              <div key={item.id} className="space-y-1">
-                <div className="flex items-center justify-between text-xs font-mono-code">
-                  <div className="flex items-center gap-2">
-                    <span className="text-white font-medium">{item.model}</span>
-                    <span
-                      className={`text-[10px] px-1.5 py-0.2 rounded border ${
-                        isValueKing
-                          ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
-                          : "bg-white/[0.05] text-zinc-400 border-white/[0.1]"
-                      }`}
-                    >
-                      {item.badge}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <span className="text-zinc-500 text-[11px]">{item.tokens}</span>
-                    <span className={`font-semibold ${item.costColor}`}>
-                      {item.cost}
-                    </span>
-                  </div>
+          return (
+            <div
+              key={item.id}
+              onMouseEnter={onMouseEnter}
+              onMouseLeave={onMouseLeave}
+              className={`p-6 rounded-xl border transition-all flex flex-col justify-between ${
+                isValueKing
+                  ? "bg-gradient-to-b from-emerald-500/[0.06] to-transparent border-emerald-500/30 hover:border-emerald-500/50 shadow-[0_4px_24px_rgba(16,185,129,0.06)]"
+                  : isExpensive
+                  ? "bg-gradient-to-b from-rose-500/[0.04] to-transparent border-rose-500/20 hover:border-rose-500/40"
+                  : "bg-white/[0.02] border-white/[0.08] hover:border-white/20"
+              }`}
+            >
+              {/* Card Top: Title & Category Pill */}
+              <div>
+                <div className="flex items-center justify-between font-mono-code text-xs mb-3">
+                  <span className="text-white font-medium text-[15px] tracking-tight">
+                    {item.model}
+                  </span>
+                  <span
+                    className={`text-[10px] tracking-wider uppercase font-semibold ${
+                      isValueKing
+                        ? "text-emerald-400"
+                        : isExpensive
+                        ? "text-rose-400"
+                        : "text-zinc-400"
+                    }`}
+                  >
+                    {item.badge}
+                  </span>
                 </div>
 
-                {/* Progress bar */}
-                <div className="w-full bg-white/[0.04] h-2.5 rounded-full overflow-hidden flex">
+                {/* Big Number */}
+                <div
+                  className={`font-serif-title italic text-4xl sm:text-5xl leading-none my-3 ${
+                    isValueKing
+                      ? "text-emerald-400"
+                      : isExpensive
+                      ? "text-rose-400"
+                      : "text-white"
+                  }`}
+                >
+                  {item.cost}
+                </div>
+
+                {/* Token volume line with visual bar indicator */}
+                <div className="font-mono-code text-xs text-zinc-400 mb-5 flex items-center justify-between">
+                  <span>{item.tokens}</span>
+                  {isValueKing && (
+                    <span className="text-[10px] text-emerald-400/80 font-sans">一轮秒杀</span>
+                  )}
+                </div>
+
+                {/* Relative token visual bar */}
+                <div className="w-full bg-white/[0.04] h-1 rounded-full overflow-hidden mb-5">
                   <div
-                    className={`h-full rounded-full transition-all duration-500 ${
+                    className={`h-full rounded-full ${
                       isValueKing
-                        ? "bg-gradient-to-r from-emerald-500 to-teal-400"
-                        : item.badge === "EXPENSIVE"
-                        ? "bg-rose-500"
-                        : item.badge === "UNSTABLE"
-                        ? "bg-zinc-600"
-                        : "bg-amber-400"
+                        ? "bg-emerald-400 w-[95%]"
+                        : isExpensive
+                        ? "bg-rose-400/80 w-[60%]"
+                        : "bg-zinc-400/80 w-[30%]"
                     }`}
-                    style={{ width: `${Math.max(4, barPercentage)}%` }}
                   />
                 </div>
               </div>
-            );
-          })}
+
+              {/* Card Bottom: Core Verdict & Evidence Source */}
+              <div className="border-t border-white/[0.06] pt-4 mt-2">
+                <p className="text-xs sm:text-[13px] text-zinc-300/90 font-light leading-relaxed mb-3">
+                  {item.verdict}
+                </p>
+                <div className="font-mono-code text-[11px] text-zinc-500">
+                  出处：{item.source}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Expandable Secondary Reference Cards (Qwen, Kimi, Legacy) */}
+      {showAll && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 animate-fadeIn">
+          {secondaryCosts.map((item) => (
+            <div
+              key={item.id}
+              onMouseEnter={onMouseEnter}
+              onMouseLeave={onMouseLeave}
+              className="p-5 rounded-xl bg-white/[0.015] border border-white/[0.06] hover:border-white/15 transition-colors flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-center justify-between font-mono-code text-xs mb-2">
+                  <span className="text-zinc-300 font-medium text-sm">
+                    {item.model}
+                  </span>
+                  <span className="text-[10px] text-zinc-500 font-mono-code uppercase">
+                    {item.badge}
+                  </span>
+                </div>
+
+                <div className={`font-serif-title italic text-3xl my-2 ${item.costColor}`}>
+                  {item.cost}
+                </div>
+                <div className="font-mono-code text-[11px] text-zinc-500 mb-3">
+                  {item.tokens}
+                </div>
+              </div>
+
+              <div className="border-t border-white/[0.05] pt-3 mt-1">
+                <p className="text-xs text-zinc-400 font-light leading-snug mb-2">
+                  {item.verdict}
+                </p>
+                <div className="font-mono-code text-[10px] text-zinc-600">
+                  出处：{item.source}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
-      </div>
-
-      {/* Grid of Detailed Cost Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {COST_DATA.map((item) => (
-          <div
-            key={item.id}
-            onMouseEnter={onMouseEnter}
-            onMouseLeave={onMouseLeave}
-            className="p-6 rounded-xl bg-[#08080c] border border-white/[0.08] hover:border-white/[0.2] transition-colors flex flex-col justify-between"
-          >
-            <div>
-              <div className="flex items-center justify-between font-mono-code text-xs mb-3">
-                <span className="text-zinc-400 font-medium">{item.model}</span>
-                <span
-                  className={`text-[10px] tracking-wider px-2 py-0.5 rounded border uppercase ${
-                    item.badge === "VALUE NO.1"
-                      ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 font-semibold"
-                      : item.badge === "EXPENSIVE"
-                      ? "bg-rose-500/10 text-rose-400 border-rose-500/30"
-                      : "bg-white/[0.04] text-zinc-400 border-white/[0.1]"
-                  }`}
-                >
-                  {item.badge}
-                </span>
-              </div>
-
-              <div
-                className={`font-serif-title text-3xl sm:text-4xl ${item.costColor} mb-1`}
-              >
-                {item.cost}
-              </div>
-              <div className="font-mono-code text-xs text-zinc-500 mb-4">
-                {item.tokens}
-              </div>
-            </div>
-
-            <div className="border-t border-white/[0.06] pt-4 mt-2">
-              <p className="text-xs text-zinc-300 font-light leading-relaxed mb-3">
-                {item.verdict}
-              </p>
-              <div className="font-mono-code text-[11px] text-zinc-500 flex items-center justify-between">
-                <span>来源: {item.source}</span>
-                <span className="text-zinc-400">评级: {item.efficiencyRating}</span>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+      )}
     </section>
   );
 };

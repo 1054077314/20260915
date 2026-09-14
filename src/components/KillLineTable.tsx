@@ -1,22 +1,14 @@
-import React from "react";
+import React, { useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { KillLineRecord, StatusType } from "../types";
-import {
-  ArrowUpDown,
-  Check,
-  CheckCircle2,
-  ChevronRight,
-  GitCompare,
-  Info,
-  SlidersHorizontal,
-  X,
-} from "lucide-react";
+import { ArrowUpDown, ChevronDown, ChevronUp, ExternalLink, HelpCircle, ChevronsUpDown, Loader2 } from "lucide-react";
 
 interface KillLineTableProps {
   data: KillLineRecord[];
   selectedModel: KillLineRecord;
   onSelectModel: (model: KillLineRecord) => void;
-  selectedForCompare: KillLineRecord[];
-  onToggleCompare: (model: KillLineRecord) => void;
+  selectedForCompare?: KillLineRecord[];
+  onToggleCompare?: (model: KillLineRecord) => void;
   onOpenDetailModal: (model: KillLineRecord) => void;
   filterTier: string;
   onFilterTierChange: (t: string) => void;
@@ -30,8 +22,6 @@ export const KillLineTable: React.FC<KillLineTableProps> = ({
   data,
   selectedModel,
   onSelectModel,
-  selectedForCompare,
-  onToggleCompare,
   onOpenDetailModal,
   filterTier,
   onFilterTierChange,
@@ -40,279 +30,386 @@ export const KillLineTable: React.FC<KillLineTableProps> = ({
   onMouseEnter,
   onMouseLeave,
 }) => {
-  const getStatusBadge = (status: StatusType, text: string) => {
+  // State for expanded rows - empty by default so it starts in maximally streamlined collapsed mode
+  const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
+  // Skeleton transition state when filtering or sorting
+  const [isTransitioning, setIsTransitioning] = useState<boolean>(false);
+
+  // Trigger smooth skeleton loading during filter or sort changes
+  const handleFilterChange = (tabId: string) => {
+    if (tabId === filterTier) return;
+    setIsTransitioning(true);
+    onFilterTierChange(tabId);
+    setTimeout(() => {
+      setIsTransitioning(false);
+    }, 240);
+  };
+
+  const handleSortChange = (newSort: "score" | "name" | "diamond" | "king") => {
+    if (newSort === sortBy) return;
+    setIsTransitioning(true);
+    onSortByChange(newSort);
+    setTimeout(() => {
+      setIsTransitioning(false);
+    }, 240);
+  };
+
+  // Toggle single row expand/collapse
+  const toggleExpand = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setExpandedIds((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
+
+  // Toggle all rows expand/collapse
+  const isAllExpanded = data.length > 0 && data.every((row) => expandedIds[row.id]);
+  const toggleAll = () => {
+    if (isAllExpanded) {
+      setExpandedIds({});
+    } else {
+      const next: Record<string, boolean> = {};
+      data.forEach((r) => {
+        next[r.id] = true;
+      });
+      setExpandedIds(next);
+    }
+  };
+
+  // Status indicator rendering
+  const renderStatus = (status: StatusType, text: string) => {
     if (status === "pass") {
       return (
-        <span className="font-mono-code text-[11px] px-2.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 whitespace-nowrap">
-          {text}
-        </span>
+        <div className="inline-flex items-center gap-1.5 font-mono-code text-xs text-emerald-400">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)] shrink-0" />
+          <span className="font-medium tracking-tight">{text}</span>
+        </div>
       );
     }
     if (status === "warn") {
       return (
-        <span className="font-mono-code text-[11px] px-2.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30 whitespace-nowrap">
-          {text}
-        </span>
+        <div className="inline-flex items-center gap-1.5 font-mono-code text-xs text-amber-400">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.6)] shrink-0" />
+          <span className="font-medium tracking-tight">{text}</span>
+        </div>
       );
     }
     if (status === "fail") {
       return (
-        <span className="font-mono-code text-[11px] px-2.5 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/30 whitespace-nowrap">
-          {text}
-        </span>
+        <div className="inline-flex items-center gap-1.5 font-mono-code text-xs text-rose-400/90">
+          <span className="w-1.5 h-1.5 rounded-full bg-rose-500/80 shrink-0" />
+          <span className="tracking-tight">{text}</span>
+        </div>
       );
     }
     return (
-      <span className="font-mono-code text-[11px] px-2.5 py-0.5 rounded bg-zinc-800/40 text-zinc-500 border border-zinc-700/30 whitespace-nowrap">
-        {text}
-      </span>
+      <div className="inline-flex items-center gap-1.5 font-mono-code text-xs text-zinc-600">
+        <span className="w-1 h-1 rounded-full bg-zinc-700 shrink-0" />
+        <span className="text-zinc-600">无记录</span>
+      </div>
     );
   };
 
-  const getTierColor = (tier: string) => {
-    switch (tier) {
-      case "T0":
-        return "text-rose-400 border-rose-500/30 bg-rose-500/10";
-      case "T1":
-        return "text-amber-400 border-amber-500/30 bg-amber-500/10";
-      case "T2":
-        return "text-blue-400 border-blue-500/30 bg-blue-500/10";
-      case "T3":
-        return "text-emerald-400 border-emerald-500/30 bg-emerald-500/10";
-      default:
-        return "text-zinc-400 border-zinc-700 bg-zinc-800/50";
-    }
+  const renderTier = (tier: string) => {
+    const colorMap: Record<string, string> = {
+      T0: "text-rose-400 font-bold",
+      T1: "text-amber-400 font-bold",
+      T2: "text-blue-400 font-semibold",
+      T3: "text-emerald-400 font-semibold",
+    };
+    return (
+      <span className={`font-mono-code text-xs tracking-wider shrink-0 ${colorMap[tier] || "text-zinc-500"}`}>
+        {tier}
+      </span>
+    );
   };
 
   return (
     <section className="mb-20 sm:mb-28">
       {/* Section Header */}
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between border-b border-white/[0.08] pb-6 mb-6 gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between border-b border-white/[0.08] pb-4 mb-6 gap-3">
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="font-serif-title italic text-3xl sm:text-5xl text-white font-normal">
-              The Kill-Line Matrix
-            </h2>
-            <span className="font-mono-code text-xs px-2 py-0.5 rounded bg-white/[0.06] text-zinc-400 border border-white/[0.08]">
-              {data.length} 条记录
-            </span>
-          </div>
-          <p className="text-xs text-zinc-400 font-mono-code mt-1.5">
-            难度体系与实战过审轮次全量对照（支持勾选双模型同屏对比、点击查看复现详情）
-          </p>
+          <h2 className="font-serif-title italic text-3xl sm:text-4xl text-white font-normal leading-tight">
+            The Kill-Line Matrix
+          </h2>
+          <span className="font-mono-code text-[11px] text-zinc-500 tracking-wider uppercase block mt-1">
+            王者绝壁斩杀线 · 点击任意行展开黄金线与实测证言
+          </span>
         </div>
 
-        {/* Filter Tabs & Sorters */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Quick Filter tabs */}
-          <div className="flex items-center gap-1 p-1 bg-white/[0.03] border border-white/[0.08] rounded-lg">
+        {/* Minimal Controls */}
+        <div className="flex items-center gap-2.5 font-mono-code text-xs flex-wrap">
+          {/* Expand/Collapse All Button */}
+          <button
+            onClick={toggleAll}
+            className="flex items-center gap-1 px-2.5 py-1 rounded bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.08] text-zinc-400 hover:text-white transition-colors text-xs"
+            title={isAllExpanded ? "折叠全部" : "展开全部"}
+          >
+            <ChevronsUpDown className="w-3 h-3 text-zinc-500" />
+            <span>{isAllExpanded ? "折叠全部" : "展开全部"}</span>
+          </button>
+
+          {/* Filter Pills */}
+          <div className="flex items-center gap-1 bg-white/[0.03] border border-white/[0.08] p-0.5 rounded">
             {[
               { id: "ALL", label: "全部" },
               { id: "TOP", label: "突围旗舰" },
-              { id: "FLASH", label: "Flash 梯队" },
-              { id: "T0_T1", label: "T0/T1 高阶" },
+              { id: "FLASH", label: "Flash" },
             ].map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => onFilterTierChange(tab.id)}
-                className={`font-mono-code text-xs px-3 py-1.5 rounded-md transition-colors ${
+                onClick={() => handleFilterChange(tab.id)}
+                className={`px-2.5 py-1 rounded transition-colors text-xs flex items-center gap-1 ${
                   filterTier === tab.id
-                    ? "bg-white text-black font-semibold shadow"
+                    ? "bg-white text-black font-semibold shadow-sm"
                     : "text-zinc-400 hover:text-white"
                 }`}
               >
-                {tab.label}
+                <span>{tab.label}</span>
               </button>
             ))}
           </div>
 
-          {/* Sort selector */}
-          <div className="flex items-center gap-1.5 text-xs font-mono-code bg-white/[0.03] border border-white/[0.08] px-3 py-1.5 rounded-lg text-zinc-300">
-            <ArrowUpDown className="w-3.5 h-3.5 text-zinc-500" />
-            <span className="text-zinc-500 hidden sm:inline">排序:</span>
+          {/* Sort Selector */}
+          <div className="flex items-center gap-1 bg-white/[0.03] border border-white/[0.08] px-2.5 py-1 rounded text-zinc-400">
+            <ArrowUpDown className="w-3 h-3 text-zinc-500" />
             <select
               value={sortBy}
-              onChange={(e) => onSortByChange(e.target.value as any)}
-              className="bg-transparent border-none text-white focus:outline-none cursor-pointer"
+              onChange={(e) => handleSortChange(e.target.value as any)}
+              className="bg-transparent border-none text-zinc-300 hover:text-white focus:outline-none cursor-pointer text-xs font-mono-code"
             >
-              <option value="score" className="bg-[#121216] text-white">
-                战力评分 (从高到低)
-              </option>
-              <option value="diamond" className="bg-[#121216] text-white">
-                钻石通关表现
-              </option>
-              <option value="king" className="bg-[#121216] text-white">
-                王者突围表现
-              </option>
-              <option value="name" className="bg-[#121216] text-white">
-                模型名称 (A-Z)
-              </option>
+              <option value="score" className="bg-[#121216] text-white">默认战力</option>
+              <option value="king" className="bg-[#121216] text-white">王者表现</option>
+              <option value="diamond" className="bg-[#121216] text-white">钻石表现</option>
+              <option value="name" className="bg-[#121216] text-white">名称 A-Z</option>
             </select>
           </div>
         </div>
       </div>
 
-      {/* Selected for compare notice banner */}
-      {selectedForCompare.length > 0 && (
-        <div className="mb-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-between text-xs font-mono-code text-amber-300">
-          <div className="flex items-center gap-2">
-            <GitCompare className="w-4 h-4" />
-            <span>
-              已选择待对比模型 ({selectedForCompare.length}/2):{" "}
-              <strong className="text-white">
-                {selectedForCompare.map((m) => m.model).join(" vs ")}
-              </strong>
-            </span>
-          </div>
-          <button
-            onClick={() => onToggleCompare(selectedForCompare[0])}
-            className="text-amber-400 hover:text-white underline text-[11px]"
-          >
-            清空对比
-          </button>
-        </div>
-      )}
+      {/* Streamlined Table: Maximally Simplified Layout with Skeleton Loading */}
+      <div className="border border-white/[0.08] rounded-xl overflow-hidden bg-white/[0.01] relative">
+        {/* Subtle loading indicator bar */}
+        {isTransitioning && (
+          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-rose-500 to-transparent animate-pulse z-20" />
+        )}
 
-      {/* Table Header (Desktop) */}
-      <div className="hidden lg:grid grid-cols-12 px-6 py-3 font-mono-code text-xs text-zinc-500 border-b border-white/[0.06] uppercase tracking-wider bg-white/[0.01]">
-        <div className="col-span-1 text-center">对比/评级</div>
-        <div className="col-span-3">MODEL / CONFIG</div>
-        <div className="col-span-2 text-center">GOLD (黄金门槛)</div>
-        <div className="col-span-2 text-center">DIAMOND (钻石分水岭)</div>
-        <div className="col-span-2 text-center">KING (王者试炼)</div>
-        <div className="col-span-2 text-right">EVIDENCE & ACTIONS</div>
-      </div>
-
-      {/* Table Body */}
-      {data.length === 0 ? (
-        <div className="py-16 text-center border border-dashed border-white/10 rounded-xl">
-          <p className="text-zinc-500 font-mono-code text-sm">
-            未找到符合条件的模型记录，请尝试调整搜索或重置筛选
-          </p>
-          <button
-            onClick={() => {
-              onFilterTierChange("ALL");
-            }}
-            className="mt-3 px-3 py-1 text-xs font-mono-code rounded bg-white/[0.06] text-zinc-300 hover:text-white"
-          >
-            重置筛选
-          </button>
-        </div>
-      ) : (
-        <div className="divide-y divide-white/[0.06] border border-white/[0.06] rounded-xl overflow-hidden">
-          {data.map((row) => {
-            const isSelected = selectedModel.id === row.id;
-            const isCompared = selectedForCompare.some((m) => m.id === row.id);
-
-            return (
-              <div
-                key={row.id}
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") onOpenDetailModal(row);
-                }}
-                onClick={() => onSelectModel(row)}
-                onMouseEnter={onMouseEnter}
-                onMouseLeave={onMouseLeave}
-                className={`grid grid-cols-1 lg:grid-cols-12 items-center p-5 lg:px-6 lg:py-4 transition-all duration-200 outline-none select-none ${
-                  isSelected
-                    ? "bg-white/[0.05] lg:translate-x-1 border-l-2 border-rose-400"
-                    : "hover:bg-white/[0.02]"
-                }`}
-              >
-                {/* Column 1: Compare checkbox & Tier badge */}
-                <div className="lg:col-span-1 flex items-center gap-2.5 mb-2 lg:mb-0">
-                  <button
-                    title={
-                      isCompared
-                        ? "取消对比"
-                        : selectedForCompare.length >= 2
-                        ? "最多对比 2 款模型"
-                        : "加入对比"
-                    }
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onToggleCompare(row);
-                    }}
-                    className={`w-5 h-5 rounded flex items-center justify-center border transition-colors ${
-                      isCompared
-                        ? "bg-amber-400 border-amber-400 text-black"
-                        : "border-white/20 hover:border-white/50 text-transparent"
-                    }`}
-                  >
-                    <Check className="w-3 h-3 stroke-[3]" />
-                  </button>
-
-                  <span
-                    className={`font-mono-code text-[11px] px-2 py-0.5 rounded border font-semibold ${getTierColor(
-                      row.tier
-                    )}`}
-                  >
-                    {row.tier}
-                  </span>
-                </div>
-
-                {/* Column 2: Model Name & Category */}
-                <div className="lg:col-span-3 flex items-center justify-between lg:justify-start gap-2 mb-3 lg:mb-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-base sm:text-lg font-medium text-white tracking-tight">
-                      {row.model}
-                    </span>
-                    {isSelected && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-rose-400 inline-block animate-ping" />
-                    )}
+        <table className="w-full border-collapse text-left">
+          <thead>
+            <tr className="border-b border-white/[0.08] bg-white/[0.02] font-mono-code text-[11px] text-zinc-500 uppercase tracking-wider">
+              <th className="py-3 px-4 sm:px-6 font-medium">模型名称</th>
+              <th className="py-3 px-4 font-medium w-28 text-center">天梯梯队</th>
+              <th className="py-3 px-4 font-medium">
+                <div className="inline-flex items-center gap-1">
+                  <span>王者线状态</span>
+                  <div className="relative group cursor-help">
+                    <HelpCircle className="w-3 h-3 text-zinc-600 hover:text-zinc-400" />
+                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 hidden group-hover:block bg-[#16161c] text-zinc-300 text-[10px] p-2 rounded shadow-2xl border border-white/10 w-48 z-20 font-sans normal-case">
+                      全 12 期最残酷绝壁。仅 Astra 一轮秒杀，绝大多数模型在此折戟。
+                    </div>
                   </div>
-                  <span className="lg:hidden text-xs text-zinc-500 font-mono-code">
-                    {row.timestamp}
-                  </span>
                 </div>
+              </th>
+              <th className="py-3 px-4 sm:px-6 text-right font-medium w-20">详情</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/[0.05]">
+            {isTransitioning ? (
+              // ---------------- ELEGANT SKELETON SCREEN ----------------
+              Array.from({ length: 6 }).map((_, idx) => (
+                <tr key={`skeleton-${idx}`} className="bg-white/[0.01] animate-pulse">
+                  {/* Model Name Skeleton */}
+                  <td className="py-4 px-4 sm:px-6">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="h-4 rounded bg-white/[0.09] transition-all"
+                        style={{ width: `${90 + (idx % 3) * 35}px` }}
+                      />
+                      <div className="h-3 w-16 rounded bg-white/[0.04] hidden sm:block" />
+                    </div>
+                  </td>
 
-                {/* Column 3: Gold */}
-                <div className="lg:col-span-2 flex items-center justify-between lg:justify-center py-1.5 lg:py-0 border-t border-white/[0.03] lg:border-none">
-                  <span className="text-xs text-zinc-500 lg:hidden font-mono-code">
-                    黄金门槛:
-                  </span>
-                  {getStatusBadge(row.goldStatus, row.gold)}
-                </div>
+                  {/* Tier Skeleton */}
+                  <td className="py-4 px-4 text-center">
+                    <div className="h-4 w-9 rounded bg-white/[0.07] mx-auto" />
+                  </td>
 
-                {/* Column 4: Diamond */}
-                <div className="lg:col-span-2 flex items-center justify-between lg:justify-center py-1.5 lg:py-0 border-t border-white/[0.03] lg:border-none">
-                  <span className="text-xs text-zinc-500 lg:hidden font-mono-code">
-                    钻石分水岭:
-                  </span>
-                  {getStatusBadge(row.diamondStatus, row.diamond)}
-                </div>
+                  {/* King Line Status Skeleton */}
+                  <td className="py-4 px-4">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-white/[0.1] shrink-0" />
+                      <div
+                        className="h-3.5 rounded bg-white/[0.06]"
+                        style={{ width: `${110 + (idx % 2) * 40}px` }}
+                      />
+                    </div>
+                  </td>
 
-                {/* Column 5: King */}
-                <div className="lg:col-span-2 flex items-center justify-between lg:justify-center py-1.5 lg:py-0 border-t border-white/[0.03] lg:border-none">
-                  <span className="text-xs text-zinc-500 lg:hidden font-mono-code">
-                    王者试炼:
-                  </span>
-                  {getStatusBadge(row.kingStatus, row.king)}
-                </div>
+                  {/* Chevron Skeleton */}
+                  <td className="py-4 px-4 sm:px-6 text-right">
+                    <div className="h-4 w-4 rounded-full bg-white/[0.05] ml-auto" />
+                  </td>
+                </tr>
+              ))
+            ) : (
+              // ---------------- REAL DATA ROWS ----------------
+              data.map((row) => {
+                const isExpanded = !!expandedIds[row.id];
+                const isSelected = selectedModel?.id === row.id;
 
-                {/* Column 6: Evidence & Detail trigger */}
-                <div className="lg:col-span-2 flex items-center justify-between lg:justify-end gap-3 mt-3 lg:mt-0 pt-2 lg:pt-0 border-t border-white/[0.05] lg:border-none">
-                  <span className="font-mono-code text-[11px] text-zinc-500 truncate max-w-[120px] hidden xl:inline">
-                    {row.quote}
-                  </span>
+                return (
+                  <React.Fragment key={row.id}>
+                    {/* Collapsed Clean Row: Only Model Name, Tier, and King Status */}
+                    <tr
+                      onClick={() => {
+                        onSelectModel(row);
+                        toggleExpand(row.id);
+                      }}
+                      onMouseEnter={onMouseEnter}
+                      onMouseLeave={onMouseLeave}
+                      className={`transition-colors cursor-pointer group select-none ${
+                        isExpanded
+                          ? "bg-white/[0.035]"
+                          : isSelected
+                          ? "bg-white/[0.025]"
+                          : "hover:bg-white/[0.02]"
+                      }`}
+                    >
+                      {/* 1. Model Name */}
+                      <td className="py-3.5 px-4 sm:px-6 align-middle">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm sm:text-[15px] font-medium text-white tracking-tight group-hover:text-rose-200 transition-colors">
+                            {row.model}
+                          </span>
+                          <span className="text-[11px] font-mono-code text-zinc-500 hidden sm:inline">
+                            ({row.timestamp})
+                          </span>
+                        </div>
+                      </td>
 
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onOpenDetailModal(row);
-                    }}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-white/[0.04] hover:bg-white/[0.1] text-zinc-300 hover:text-white border border-white/[0.08] text-xs font-mono-code transition-colors"
-                  >
-                    <span>详情档案</span>
-                    <ChevronRight className="w-3 h-3" />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+                      {/* 2. Tier */}
+                      <td className="py-3.5 px-4 text-center align-middle">
+                        {renderTier(row.tier)}
+                      </td>
+
+                      {/* 3. King Line Status (With Tooltip on hover) */}
+                      <td className="py-3.5 px-4 align-middle">
+                        <div className="relative group/tip inline-block">
+                          {renderStatus(row.kingStatus, row.king)}
+
+                          {/* Tooltip: fast glance at hidden metrics without expanding */}
+                          {!isExpanded && (
+                            <div className="absolute left-0 bottom-full mb-2 hidden group-hover/tip:flex flex-col gap-1 bg-[#16161c]/95 backdrop-blur border border-white/10 p-2.5 rounded-lg shadow-2xl z-30 min-w-[200px] pointer-events-none text-xs font-mono-code">
+                              <div className="text-[10px] text-zinc-500 uppercase pb-1 border-b border-white/[0.06]">
+                                阶段速览
+                              </div>
+                              <div className="flex justify-between text-zinc-300">
+                                <span className="text-zinc-500">黄金线:</span>
+                                <span>{row.gold}</span>
+                              </div>
+                              <div className="flex justify-between text-zinc-300">
+                                <span className="text-zinc-500">钻石线:</span>
+                                <span>{row.diamond}</span>
+                              </div>
+                              <div className="text-[10px] text-rose-400 pt-1 text-right">
+                                点击行展开实录证言 ↗
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* 4. Expand / Collapse Trigger */}
+                      <td className="py-3.5 px-4 sm:px-6 text-right align-middle">
+                        <button
+                          onClick={(e) => toggleExpand(row.id, e)}
+                          className="text-zinc-500 group-hover:text-zinc-300 p-1 rounded hover:bg-white/[0.05] transition-colors"
+                          title={isExpanded ? "收起详情" : "展开详情"}
+                        >
+                          {isExpanded ? (
+                            <ChevronUp className="w-4 h-4 text-rose-400" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4" />
+                          )}
+                        </button>
+                      </td>
+                    </tr>
+
+                    {/* Expandable Accordion: Details revealed only on user click */}
+                    <AnimatePresence>
+                      {isExpanded && (
+                        <tr className="bg-[#0b0b10] border-b border-white/[0.08]">
+                          <td colSpan={4} className="p-0">
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: "auto" }}
+                              exit={{ opacity: 0, height: 0 }}
+                              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                              className="overflow-hidden"
+                            >
+                              <div className="py-4 px-4 sm:px-6 space-y-3.5">
+                                {/* Gold & Diamond metrics */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-3 border-b border-white/[0.06] font-mono-code text-xs">
+                                  <div className="p-2.5 rounded bg-white/[0.02] border border-white/[0.04]">
+                                    <span className="text-zinc-500 uppercase text-[10px] block mb-1">
+                                      黄金线状态 (基础门槛)
+                                    </span>
+                                    {renderStatus(row.goldStatus, row.gold)}
+                                  </div>
+                                  <div className="p-2.5 rounded bg-white/[0.02] border border-white/[0.04]">
+                                    <span className="text-zinc-500 uppercase text-[10px] block mb-1">
+                                      钻石线状态 (分水岭)
+                                    </span>
+                                    {renderStatus(row.diamondStatus, row.diamond)}
+                                  </div>
+                                </div>
+
+                                {/* Combat Log & Quote */}
+                                <div>
+                                  <div className="font-mono-code text-[10px] text-zinc-500 uppercase mb-1">
+                                    实战评测证言 (12 期实录)
+                                  </div>
+                                  <p className="text-xs sm:text-[13px] text-zinc-300 font-light leading-relaxed">
+                                    {row.log}
+                                  </p>
+                                </div>
+
+                                {row.quote && (
+                                  <div className="pl-3 border-l-2 border-rose-500/40 py-1 font-mono-code text-xs text-zinc-400 italic bg-rose-500/[0.02]">
+                                    “{row.quote}”
+                                  </div>
+                                )}
+
+                                {/* Actions footer inside expansion */}
+                                <div className="pt-2 flex items-center justify-between text-xs font-mono-code">
+                                  <span className="text-zinc-500 text-[11px]">
+                                    战力指数: <strong className="text-white font-bold">{row.score}</strong> 分
+                                  </span>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onOpenDetailModal(row);
+                                    }}
+                                    className="inline-flex items-center gap-1 text-rose-400 hover:text-rose-300 transition-colors"
+                                  >
+                                    <span>深入战损档案</span>
+                                    <ExternalLink className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              </div>
+                            </motion.div>
+                          </td>
+                        </tr>
+                      )}
+                    </AnimatePresence>
+                  </React.Fragment>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
     </section>
   );
 };
